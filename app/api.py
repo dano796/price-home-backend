@@ -11,7 +11,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-with open("modeloVentasRealState.pkl", "rb") as file:
+with open("../modeloVentasRealState.pkl", "rb") as file:
     model, variables, min_max_scaler = pickle.load(file)
 
 @app.get('/saludar')
