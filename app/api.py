@@ -1,8 +1,6 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import pandas as pd
-import pickle
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import pickle
 
 app = FastAPI()
 app.add_middleware(
@@ -16,35 +14,40 @@ app.add_middleware(
 with open("modeloVentasRealState.pkl", "rb") as file:
     model, variables, min_max_scaler = pickle.load(file)
 
-class HouseData(BaseModel):
-    area: int
-    baths: int
-    city: str
-    garages: int
-    is_new: int
-    neighbourhood: str
-    property_type: str
-    rooms: int
-    stratum: str
-
 @app.get('/saludar')
 async def saludar():
-    return "Hola mundo"
+    return {"message": "Hola mundo"}
 
 @app.post('/predict')
-async def predict_price(house_data: HouseData):
-    df = pd.DataFrame([house_data.model_dump()])
-
-    data_preparada = pd.get_dummies(
-        df,
-        columns=["is_new", "stratum", "property_type", "neighbourhood", "city"],
-        drop_first=False,
-    )
-    data_preparada = data_preparada.reindex(columns=variables, fill_value=0)
-
+async def predict_price(house_data: dict):
     try:
-        prediction = model.predict(data_preparada)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Extraer datos del diccionario de entrada y estructurar
+        input_data = {
+            "area": house_data.get("area", 0),
+            "baths": house_data.get("baths", 0),
+            "garages": house_data.get("garages", 0),
+            "rooms": house_data.get("rooms", 0),
+            "is_new": f"is_new_{house_data.get('is_new', 0)}",
+            "stratum": f"stratum_{house_data.get('stratum', '1')}",
+            "property_type": f"property_type_{house_data.get('property_type', '')}",
+            "neighbourhood": f"neighbourhood_{house_data.get('neighbourhood', '')}",
+            "city": f"city_{house_data.get('city', '')}"
+        }
 
-    return {"predicted_price": prediction[0]}
+        # Crear un vector de entrada con ceros, y llenar según las variables
+        data_preparada = {var: 0 for var in variables}
+        for key, value in input_data.items():
+            if value in data_preparada:
+                data_preparada[value] = 1
+            elif key in data_preparada:
+                data_preparada[key] = value
+
+        # Transformar diccionario en lista según el orden de 'variables' para la predicción
+        data_list = [data_preparada.get(var, 0) for var in variables]
+
+        # Realizar la predicción
+        prediction = model.predict([data_list])
+        return {"predicted_price": prediction[0]}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al predecir el precio: {str(e)}")
