@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://price-home-frontend-mph530c9i-daniels-projects-effc94ee.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -15,7 +15,6 @@ app.add_middleware(
 
 with open("modeloVentasRealState.pkl", "rb") as file:
     model, variables, min_max_scaler = pickle.load(file)
-
 
 class HouseData(BaseModel):
     area: int
@@ -27,7 +26,6 @@ class HouseData(BaseModel):
     property_type: str
     rooms: int
     stratum: str
-
 
 @app.get('/saludar')
 async def saludar():
